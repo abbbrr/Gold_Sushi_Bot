@@ -38,9 +38,32 @@ def handle_back(message):
     handle_start(message)
 
 
-@bot.message_handler(func=lambda message: message.text == "Общий счет за месяц 🗓")
+@bot.message_handler(func=lambda message: message.text == "------------------------------------------Общий счет за месяц 🗓------------------------------------------")
 def handle_total_month_sales(message):
-    print("Продажа за месяц")
+    current_month_year = datetime.datetime.now().strftime("%B %Y")
+
+    # Создание пустой белой фотографии
+    width, height = 500, 1000  # Размеры фотографии
+    color = (255, 255, 255)  # Белый цвет
+    image = Image.new("RGB", (width, height), color)
+
+    # Инициализация объекта рисования
+    draw = ImageDraw.Draw(image)
+
+    # Загрузка шрифта
+    font = ImageFont.truetype("Roboto-Bold.ttf", size=15)
+
+    # Добавление текста о текущем месяце и годе
+    draw.text((10, 10), f"Отчет за {current_month_year}", fill="black", font=font)
+
+    # Добавление текста о проданных товарах на фотографию
+    # Здесь должен быть код для получения информации о продажах за месяц и формирования текста
+
+    # Сохранение фотографии с информацией о проданных товарах за месяц
+    image.save("sales_month_report.png")
+
+    # Отправка фотографии пользователю
+    bot.send_photo(message.chat.id, open("sales_month_report.png", "rb"))
 
 
 # Обработчик команды "Закрыть день 🚫"
@@ -57,7 +80,15 @@ def close_day(message):
     sales = db.sales.find()
     for sale in sales:
         if sale["type"] == "set":
-            total_earnings += sale["total_price"]
+            set_info = next((s for s in sets if s["name"] == sale["item_name"]), None)
+            if set_info:
+                total_earnings += sale["total_price"]  # Учитываем выручку от продажи сета
+                total_costs += set_info["cost_price"]  # Учитываем себестоимость сета
+        elif sale["type"] == "rest":
+            rest_info = next((r for r in rest if r["name"] == sale["item_name"]), None)
+            if rest_info:
+                total_earnings += sale["total_price"]  # Учитываем выручку от продажи остального товара
+                total_costs += rest_info["cost_price"]  # Учитываем себестоимость остального товара
         elif sale["type"] == "drink":
             drink_info = db.drinks.find_one({"drink": sale['item_name']})
             if drink_info:
@@ -91,7 +122,6 @@ def close_day(message):
     db.sales.delete_many({})
 
     bot.reply_to(message, f"День успешно закрыт. Сохранена информация: \n{sales_summary} ")
-
 
 
 @bot.message_handler(func=lambda message: message.text == "Общий счет за день 📈")
@@ -400,7 +430,7 @@ def handle_drinks(message):
 # Обработчик кнопки "Продукты 🍞"
 @bot.message_handler(func=lambda message: message.text == "Продукты 🍞")
 def handle_products(message):
-    markup = types.ReplyKeyboardMarkup(row_width=6)
+    markup = types.ReplyKeyboardMarkup(row_width=5)
     item1 = types.KeyboardButton("Рис")
     item2 = types.KeyboardButton("Нори")
     item3 = types.KeyboardButton("Ласось")
@@ -419,7 +449,14 @@ def handle_products(message):
     item16 = types.KeyboardButton("Масаго")
     item17 = types.KeyboardButton("Крылышки")
     item18 = types.KeyboardButton("Фри")
-    markup.add(item1, item2, item3, item4, item5, item6, item7, item8, item9, item10, item11, item12,item13, item14, item15, item16, item17, item18)
+    item19 = types.KeyboardButton("Тесто")
+    item20 = types.KeyboardButton("Сыр")
+    item21 = types.KeyboardButton("Пицца соус")
+    item22 = types.KeyboardButton("Томато")
+    item23 = types.KeyboardButton("Колбаса")
+    item24 = types.KeyboardButton("Курица")
+    item25 = types.KeyboardButton("Грибы")
+    markup.add(item1, item2, item3, item4, item5, item6, item7, item8, item9, item10, item11, item12,item13, item14, item15, item16, item17, item18,item19,item20,item21,item22,item23, item24, item25)
     bot.send_message(message.chat.id, "Выберите продукт:", reply_markup=markup)
 
 
@@ -433,7 +470,7 @@ def handle_selected_drink(message):
     bot.send_message(message.chat.id, f"Напишите количество {drink_name} в цифрах:")
 
 # Обработчик выбора продукта
-@bot.message_handler(func=lambda message: message.text in ["Рис", "Нори", "Ласось", "Твор Сыр", "Угорь", "Огурцы", "Листья Салат", "Майонез", "Курица", "Снеж Краб", "Плавленный Сыр", "Кунжут", "Спайси", "Сыр Моцарелла", "Унаги Соус", "Масаго", "Крылышки", "Фри"])
+@bot.message_handler(func=lambda message: message.text in ["Рис", "Нори", "Ласось", "Твор Сыр", "Угорь", "Огурцы", "Листья Салат", "Майонез", "Курица", "Снеж Краб", "Плавленный Сыр", "Кунжут", "Спайси", "Сыр Моцарелла", "Унаги Соус", "Масаго", "Крылышки", "Фри", "Тесто", "Сыр", "Пицца соус", "Томато", "Колбаса","Курица", "Грибы"])
 def handle_selected_product(message):
     user_id = message.chat.id
     product_name = message.text

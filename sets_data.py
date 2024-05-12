@@ -1,8 +1,8 @@
 sets = [
     {"name": "Сет Токио", "price": 6290, "cost_price": 4000, "ingredients": [
         {"type": "drink", "name": "Cola", "quantity": 1},
-        {"type": "product", "name": "Мука", "quantity": 350},
-        {"type": "product", "name": "Картошка", "quantity": 200}
+        {"type": "product", "name": "Рис", "quantity": 350},
+        {"type": "product", "name": "Огурцы", "quantity": 200}
     ]},
     {"name": "Сет Любовь", "price": 4990, "cost_price": 4000, "ingredients": [
         {"type": "drink", "name": "Cola", "quantity": 1},
@@ -179,23 +179,31 @@ rest = [
         {"type": "product", "name": "Фри", "quantity": 150},
     ]},
     {"name": "Маргарита🍕", "price": 1890, "cost_price": 586, "ingredients": [
-        {"type": "drink", "name": "Cola", "quantity": 1},
-        {"type": "product", "name": "Мука", "quantity": 350},
-        {"type": "product", "name": "Картошка", "quantity": 200}
+        {"type": "product", "name": "Тесто", "quantity": 250},
+        {"type": "product", "name": "Сыр", "quantity": 100},
+        {"type": "product", "name": "Пицца соус", "quantity": 50},
+        {"type": "product", "name": "Томат", "quantity": 100}
     ]},
     {"name": "Пепперони🍕", "price": 2290, "cost_price": 556, "ingredients": [
-        {"type": "drink", "name": "Cola", "quantity": 1},
-        {"type": "product", "name": "Мука", "quantity": 350},
-        {"type": "product", "name": "Картошка", "quantity": 200}
+        {"type": "product", "name": "Тесто", "quantity": 250},
+        {"type": "product", "name": "Сыр", "quantity": 100},
+        {"type": "product", "name": "Пицца соус", "quantity": 50},
+        {"type": "product", "name": "Колбаса", "quantity": 100}
     ]},
     {"name": "Пицца с грибами и курецей🍕", "price": 2490, "cost_price": 616, "ingredients": [
-        {"type": "drink", "name": "Cola", "quantity": 1},
-        {"type": "product", "name": "Мука", "quantity": 350},
-        {"type": "product", "name": "Картошка", "quantity": 200}
+        {"type": "product", "name": "Тесто", "quantity": 250},
+        {"type": "product", "name": "Сыр", "quantity": 100},
+        {"type": "product", "name": "Пицца соус", "quantity": 50},
+        {"type": "product", "name": "Грибы", "quantity": 60},
+        {"type": "product", "name": "Курица", "quantity": 60}
     ]},
     {"name": "4 сезонна🍕", "price": 2590, "cost_price": 656, "ingredients": [
-        {"type": "drink", "name": "Cola", "quantity": 1},
-        {"type": "product", "name": "Мука", "quantity": 350},
-        {"type": "product", "name": "Картошка", "quantity": 200}
+        {"type": "product", "name": "Тесто", "quantity": 250},
+        {"type": "product", "name": "Сыр", "quantity": 100},
+        {"type": "product", "name": "Пицца соус", "quantity": 50},
+        {"type": "product", "name": "Грибы", "quantity": 38},
+        {"type": "product", "name": "Томат", "quantity": 38},
+        {"type": "product", "name": "Колбаса", "quantity": 38},
+        {"type": "product", "name": "Курица", "quantity": 38}
     ]},
 ]
