@@ -3,6 +3,8 @@ from sets_data import sets, rest
 from PIL import Image, ImageDraw, ImageFont
 from telebot import types
 from pymongo import MongoClient
+import sqlite3
+
 
 TOKEN = '7058378528:AAFk9MP7hAclT34-JAz29ewI-icYntRzeqU'
 MONGODB_URI = 'mongodb://localhost:27018/'
@@ -10,6 +12,9 @@ DB_NAME = 'my-gold'
 
 client = MongoClient(MONGODB_URI)
 db = client[DB_NAME]
+
+sqlite_conn = sqlite3.connect('drinks.db')
+sqlite_cursor = sqlite_conn.cursor()
 
 
 bot = telebot.TeleBot(TOKEN)
@@ -38,7 +43,7 @@ def handle_back(message):
     handle_start(message)
 
 
-@bot.message_handler(func=lambda message: message.text == "------------------------------------------Общий счет за месяц 🗓------------------------------------------")
+@bot.message_handler(func=lambda message: message.text == "Общий счет за месяц 🗓")
 def handle_total_month_sales(message):
     current_month_year = datetime.datetime.now().strftime("%B %Y")
 
@@ -54,7 +59,7 @@ def handle_total_month_sales(message):
     font = ImageFont.truetype("Roboto-Bold.ttf", size=15)
 
     # Добавление текста о текущем месяце и годе
-    draw.text((10, 10), f"Отчет за {current_month_year}", fill="black", font=font)
+    draw.text((10, 10), f"---------------------------Отчет за {current_month_year}-----------------------------", fill="black", font=font)
 
     # Добавление текста о проданных товарах на фотографию
     # Здесь должен быть код для получения информации о продажах за месяц и формирования текста
@@ -509,40 +514,68 @@ def handle_product_quantity(message):
     handle_start(message)
 
 
+# @bot.message_handler(func=lambda message: message.chat.id in selected_drink and message.text.isdigit())
+# def handle_drink_quantity(message):
+#     user_id = message.chat.id
+#     drink_name = selected_drink[user_id]["drink_name"]
+#     quantity = int(message.text)
+#
+#     # Проверяем, существует ли уже такой напиток в базе данных
+#     existing_drink = db.drinks.find_one({"user_id": user_id, "drink": drink_name})
+#
+#     if existing_drink:
+#         # Если напиток уже существует, обновляем его количество
+#         new_quantity = existing_drink["quantity"] + quantity
+#         db.drinks.update_one({"user_id": user_id, "drink": drink_name}, {"$set": {"quantity": new_quantity}})
+#         bot.send_message(user_id, f"Количество {drink_name} обновлено: {new_quantity} шт.")
+#         handle_start(message)
+#     else:
+#         # Если напитка нет в базе данных, запрашиваем стоимость
+#         bot.send_message(user_id, "Введите стоимость напитка:")
+#         bot.register_next_step_handler(message, lambda m: save_drink_data(user_id, drink_name, quantity, m.text))
+
 @bot.message_handler(func=lambda message: message.chat.id in selected_drink and message.text.isdigit())
 def handle_drink_quantity(message):
     user_id = message.chat.id
     drink_name = selected_drink[user_id]["drink_name"]
-    quantity = int(message.text)
+    quantity = message.text
 
-    # Проверяем, существует ли уже такой напиток в базе данных
-    existing_drink = db.drinks.find_one({"user_id": user_id, "drink": drink_name})
-
-    if existing_drink:
-        # Если напиток уже существует, обновляем его количество
-        new_quantity = existing_drink["quantity"] + quantity
-        db.drinks.update_one({"user_id": user_id, "drink": drink_name}, {"$set": {"quantity": new_quantity}})
-        bot.send_message(user_id, f"Количество {drink_name} обновлено: {new_quantity} шт.")
-        handle_start(message)
-    else:
-        # Если напитка нет в базе данных, запрашиваем стоимость
-        bot.send_message(user_id, "Введите стоимость напитка:")
-        bot.register_next_step_handler(message, lambda m: save_drink_data(user_id, drink_name, quantity, m.text))
-
+    bot.send_message(user_id, "Введите стоимость напитка:")
+    bot.register_next_step_handler(message, lambda m: save_drink_data(user_id, drink_name, quantity, m.text))
 
     def save_drink_data(user_id, drink_name, quantity, cost):
-        # Преобразовать стоимость в числовой формат
+        # Преобразуем количество и стоимость в числовой формат
         try:
+            quantity = int(quantity)
             cost = float(cost)
         except ValueError:
-            bot.send_message(user_id, "Пожалуйста, введите корректную стоимость в числовом формате.")
+            bot.send_message(user_id, "Пожалуйста, введите корректные данные.")
             return
 
-        # Добавляем новую запись о напитке
-        db.drinks.insert_one({"user_id": user_id, "drink": drink_name, "quantity": quantity, "cost": cost})
+        # Подключение к базе данных SQLite
+        sqlite_conn = sqlite3.connect('drinks.db')
+        sqlite_cursor = sqlite_conn.cursor()
 
-        bot.send_message(user_id, f"Сохранено: {drink_name}: {quantity} шт., стоимость: {cost} тг.")
-        handle_start(message)
+        # Проверяем, существует ли уже такой напиток в базе данных
+        sqlite_cursor.execute("SELECT * FROM drinks WHERE user_id=? AND drink=?", (user_id, drink_name))
+        existing_drink = sqlite_cursor.fetchone()
+
+        if existing_drink:
+            # Если напиток уже существует, обновляем его количество
+            new_quantity = existing_drink[3] + quantity  # 3 - это индекс колонки quantity
+            sqlite_cursor.execute("UPDATE drinks SET quantity=? WHERE user_id=? AND drink=?",
+                                  (new_quantity, user_id, drink_name))
+            sqlite_conn.commit()
+            bot.send_message(user_id, f"Количество {drink_name} обновлено: {new_quantity} шт.")
+        else:
+            # Если напитка нет в базе данных, добавляем новую запись
+            sqlite_cursor.execute("INSERT INTO drinks (user_id, drink, quantity, cost) VALUES (?, ?, ?, ?)",
+                                  (user_id, drink_name, quantity, cost))
+            sqlite_conn.commit()
+            bot.send_message(user_id, f"Сохранено: {drink_name}: {quantity} шт., стоимость: {cost} тг.")
+
+        # Закрываем соединение с базой данных SQLite
+        sqlite_conn.close()
 
 # Запускаем бот
 bot.polling()
