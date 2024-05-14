@@ -74,36 +74,52 @@ def handle_total_month_sales(message):
 # Обработчик команды "Закрыть день 🚫"
 @bot.message_handler(func=lambda message: message.text == "Закрыть день 🚫")
 def close_day(message):
-    if db.sales.count_documents({}) == 0:
+    # Подключение к базе данных SQLite для продаж
+    sales_conn = sqlite3.connect('sales.db')
+    sales_cursor = sales_conn.cursor()
+
+    # Проверка наличия продаж
+    sales_cursor.execute("SELECT COUNT(*) FROM sales")
+    sales_count = sales_cursor.fetchone()[0]
+    if sales_count == 0:
         bot.reply_to(message, "Пробейте заказ или вы уже закрыли день.")
+        sales_conn.close()
         return
 
     total_earnings = 0
     total_costs = 0
 
     # Получение информации о проданных товарах за день из базы данных
-    sales = db.sales.find()
+    sales_cursor.execute("SELECT item_name, type, quantity, total_price FROM sales")
+    sales = sales_cursor.fetchall()
     for sale in sales:
-        if sale["type"] == "set":
-            set_info = next((s for s in sets if s["name"] == sale["item_name"]), None)
+        item_name, type, quantity, total_price = sale
+        if type == "set":
+            set_info = next((s for s in sets if s["name"] == item_name), None)
             if set_info:
-                total_earnings += sale["total_price"]  # Учитываем выручку от продажи сета
+                total_earnings += total_price  # Учитываем выручку от продажи сета
                 total_costs += set_info["cost_price"]  # Учитываем себестоимость сета
-        elif sale["type"] == "rest":
-            rest_info = next((r for r in rest if r["name"] == sale["item_name"]), None)
+        elif type == "rest":
+            rest_info = next((r for r in rest if r["name"] == item_name), None)
             if rest_info:
-                total_earnings += sale["total_price"]  # Учитываем выручку от продажи остального товара
+                total_earnings += total_price  # Учитываем выручку от продажи остального товара
                 total_costs += rest_info["cost_price"]  # Учитываем себестоимость остального товара
-        elif sale["type"] == "drink":
-            drink_info = db.drinks.find_one({"drink": sale['item_name']})
+        elif type == "drink":
+            # Подключение к базе данных SQLite для напитков
+            drinks_conn = sqlite3.connect('drinks.db')
+            drinks_cursor = drinks_conn.cursor()
+            drinks_cursor.execute("SELECT cost FROM drinks WHERE drink=?", (item_name,))
+            drink_info = drinks_cursor.fetchone()
+            drinks_conn.close()
+
             if drink_info:
-                drink_cost = drink_info["cost"]  # Получаем стоимость напитка из базы данных
-                total_costs += drink_cost * sale["quantity"]  # Рассчитываем себестоимость напитка
-                total_earnings += sale["quantity"] * 690  # Рассчитываем прибыль от продажи напитка
+                drink_cost = drink_info[0]  # Получаем стоимость напитка из базы данных
+                total_costs += drink_cost * quantity  # Рассчитываем себестоимость напитка
+                total_earnings += 690 * quantity  # Рассчитываем прибыль от продажи напитка
             else:
                 # Если информация о напитке не найдена в базе данных, используем дефолтную стоимость
-                total_costs += sale["quantity"] * 400  # Дефолтная себестоимость напитка
-                total_earnings += sale["quantity"] * 690  # Рассчитываем прибыль от продажи напитка
+                total_costs += quantity * 400  # Дефолтная себестоимость напитка
+                total_earnings += quantity * 690  # Рассчитываем прибыль от продажи напитка
 
     # Вычисление чистой прибыли за день
     net_earnings = total_earnings - total_costs
@@ -114,60 +130,198 @@ def close_day(message):
     # Формирование строки для записи в базу данных и вывода пользователю
     sales_summary = f"{current_date}, Прибыль: {total_earnings} тг, Себестоимость: {total_costs} тг, Чистая: {net_earnings} тг"
 
-    # Создание записи для сохранения в коллекцию month_sales
-    day_summary = {
-        "date": current_date,
-        "earnings": total_earnings,
-        "costs": total_costs,
-        "net_earnings": net_earnings
-    }
+    # Создание записи для сохранения в таблицу month_sales
+    day_summary = (current_date, total_earnings, total_costs, net_earnings)
 
-    # Сохранение данных в коллекцию month_sales
-    db.month_sales.insert_one(day_summary)
-    db.sales.delete_many({})
+    # Подключение к базе данных SQLite для month_sales
+    month_conn = sqlite3.connect('month.db')
+    month_cursor = month_conn.cursor()
+    month_cursor.execute("INSERT INTO month_sales (date, earnings, costs, net_earnings) VALUES (?, ?, ?, ?)", day_summary)
+    month_conn.commit()
+    month_conn.close()
 
-    bot.reply_to(message, f"День успешно закрыт. Сохранена информация: \n{sales_summary} ")
+    # Удаление всех записей о продажах за день
+    sales_cursor.execute("DELETE FROM sales")
+    sales_conn.commit()
 
+    sales_conn.close()
+
+    bot.reply_to(message, f"День успешно закрыт. Сохранена информация: \n{sales_summary}")
+# @bot.message_handler(func=lambda message: message.text == "Закрыть день 🚫")
+# def close_day(message):
+#     if db.sales.count_documents({}) == 0:
+#         bot.reply_to(message, "Пробейте заказ или вы уже закрыли день.")
+#         return
+#
+#     total_earnings = 0
+#     total_costs = 0
+#
+#     # Получение информации о проданных товарах за день из базы данных
+#     sales = db.sales.find()
+#     for sale in sales:
+#         if sale["type"] == "set":
+#             set_info = next((s for s in sets if s["name"] == sale["item_name"]), None)
+#             if set_info:
+#                 total_earnings += sale["total_price"]  # Учитываем выручку от продажи сета
+#                 total_costs += set_info["cost_price"]  # Учитываем себестоимость сета
+#         elif sale["type"] == "rest":
+#             rest_info = next((r for r in rest if r["name"] == sale["item_name"]), None)
+#             if rest_info:
+#                 total_earnings += sale["total_price"]  # Учитываем выручку от продажи остального товара
+#                 total_costs += rest_info["cost_price"]  # Учитываем себестоимость остального товара
+#         elif sale["type"] == "drink":
+#             drink_info = db.drinks.find_one({"drink": sale['item_name']})
+#             if drink_info:
+#                 drink_cost = drink_info["cost"]  # Получаем стоимость напитка из базы данных
+#                 total_costs += drink_cost * sale["quantity"]  # Рассчитываем себестоимость напитка
+#                 total_earnings += sale["quantity"] * 690  # Рассчитываем прибыль от продажи напитка
+#             else:
+#                 # Если информация о напитке не найдена в базе данных, используем дефолтную стоимость
+#                 total_costs += sale["quantity"] * 400  # Дефолтная себестоимость напитка
+#                 total_earnings += sale["quantity"] * 690  # Рассчитываем прибыль от продажи напитка
+#
+#     # Вычисление чистой прибыли за день
+#     net_earnings = total_earnings - total_costs
+#
+#     # Текущая дата
+#     current_date = datetime.datetime.now().strftime("%d.%m.%Y")
+#
+#     # Формирование строки для записи в базу данных и вывода пользователю
+#     sales_summary = f"{current_date}, Прибыль: {total_earnings} тг, Себестоимость: {total_costs} тг, Чистая: {net_earnings} тг"
+#
+#     # Создание записи для сохранения в коллекцию month_sales
+#     day_summary = {
+#         "date": current_date,
+#         "earnings": total_earnings,
+#         "costs": total_costs,
+#         "net_earnings": net_earnings
+#     }
+#
+#     # Сохранение данных в коллекцию month_sales
+#     db.month_sales.insert_one(day_summary)
+#     db.sales.delete_many({})
+#
+#     bot.reply_to(message, f"День успешно закрыт. Сохранена информация: \n{sales_summary} ")
+#
+
+# @bot.message_handler(func=lambda message: message.text == "Общий счет за день 📈")
+# def handle_total_sales(message):
+#     total_price = 0
+#     total_cost = 0
+#     current_date = datetime.datetime.now() .strftime("----------------------------%d.%m.%Y--------------------------")
+#     sales_text = f"{current_date}\n-----------------------Общий чек за день---------------------\n\n"
+#
+#     # Получение информации о проданных товарах из базы данных
+#     sales = db.sales.find()
+#     for sale in sales:
+#         if sale["type"] == "set":
+#             set_info = next((s for s in sets if s["name"] == sale["item_name"]), None)
+#             if set_info:
+#                 total_price += sale["total_price"]  # Используем цену сета из записи в базе данных
+#                 # Добавляем информацию о продаже сета в чек
+#                 sales_text += f"{sale['item_name']} (Сет): {sale['total_price']} тг. (Себестоимость: {set_info['cost_price']} тг.)\n"
+#                 # Вычитаем себестоимость сета из общей себестоимости
+#                 total_cost += set_info["cost_price"]
+#         elif sale["type"] == "drink":
+#             drink_info = db.drinks.find_one(
+#                 {"drink": sale['item_name']})  # Получаем информацию о напитке из базы данных
+#             if drink_info:
+#                 drink_cost = drink_info["cost"]  # Получаем стоимость напитка из базы данных
+#                 total_cost += drink_cost * sale["quantity"]  # Рассчитываем себестоимость напитка
+#                 total_price += 690 * sale["quantity"]  # Рассчитываем цену напитка по фиксированной цене продажи
+#                 sales_text += f"{sale['item_name']} (Напиток x{sale['quantity']}): {690 * sale['quantity']} тг.\n"
+#             else:
+#                 # Если информация о напитке не найдена в базе данных, используем дефолтную стоимость
+#                 total_cost += sale["quantity"] * 500  # Дефолтная себестоимость напитка
+#                 total_price += 690 * sale["quantity"]  # Рассчитываем цену напитка по фиксированной цене продажи
+#                 sales_text += f"{sale['item_name']} (Напиток x{sale['quantity']}): {690 * sale['quantity']} тг.\n"
+#         elif sale["type"] == "rest":
+#             rest_info = next((r for r in rest if r["name"] == sale["item_name"]), None)
+#             if rest_info:
+#                 total_price += sale["total_price"]  # Используем цену сета из записи в базе данных
+#                 # Добавляем информацию о продаже сета в чек
+#                 sales_text += f"{sale['item_name']} (Остальное): {sale['total_price']} тг. (Себестоимость: {rest_info['cost_price']} тг.)\n"
+#                 # Вычитаем себестоимость сета из общей себестоимости
+#                 total_cost += rest_info["cost_price"]
+#
+#     profit = total_price - total_cost
+#     sales_text += f"-----------------------------------------------------------\n"
+#     sales_text += f"Общая сумма всех проданных товаров: {total_price} тг.\n"
+#     sales_text += f"Общая себестоимость всех проданных товаров: {total_cost} тг.\n"
+#     sales_text += f"Прибыль: {profit} тг.\n"
+#
+#     # Создание пустой белой фотографии
+#     width, height = 500, 1000  # Размеры фотографии
+#     color = (255, 255, 255)  # Белый цвет
+#     image = Image.new("RGB", (width, height), color)
+#
+#     # Инициализация объекта рисования
+#     draw = ImageDraw.Draw(image)
+#
+#     # Загрузка шрифта
+#     font = ImageFont.truetype("Roboto-Bold.ttf", size=15)
+#
+#     # Добавление текста о проданных товарах на фотографию
+#     draw.text((10, 10), sales_text, fill="black", font=font)
+#
+#     # Сохранение фотографии с информацией о проданных товарах
+#     image.save("sales_report.png")
+#
+#     # Отправка фотографии пользователю
+#     bot.send_photo(message.chat.id, open("sales_report.png", "rb"))
 
 @bot.message_handler(func=lambda message: message.text == "Общий счет за день 📈")
 def handle_total_sales(message):
     total_price = 0
     total_cost = 0
-    current_date = datetime.datetime.now() .strftime("----------------------------%d.%m.%Y--------------------------")
+    current_date = datetime.datetime.now().strftime("----------------------------%d.%m.%Y--------------------------")
     sales_text = f"{current_date}\n-----------------------Общий чек за день---------------------\n\n"
 
+    # Подключение к базам данных SQLite
+    sales_conn = sqlite3.connect('sales.db')
+    drinks_conn = sqlite3.connect('drinks.db')
+    products_conn = sqlite3.connect('products.db')
+
+    sales_cursor = sales_conn.cursor()
+    drinks_cursor = drinks_conn.cursor()
+    products_cursor = products_conn.cursor()
+
     # Получение информации о проданных товарах из базы данных
-    sales = db.sales.find()
+    sales_cursor.execute("SELECT item_name, type, quantity FROM sales")
+    sales = sales_cursor.fetchall()
+
     for sale in sales:
-        if sale["type"] == "set":
-            set_info = next((s for s in sets if s["name"] == sale["item_name"]), None)
+        item_name, sale_type, quantity = sale
+        if sale_type == "set":
+            set_info = next((s for s in sets if s["name"] == item_name), None)
             if set_info:
-                total_price += sale["total_price"]  # Используем цену сета из записи в базе данных
-                # Добавляем информацию о продаже сета в чек
-                sales_text += f"{sale['item_name']} (Сет): {sale['total_price']} тг. (Себестоимость: {set_info['cost_price']} тг.)\n"
-                # Вычитаем себестоимость сета из общей себестоимости
+                total_price += set_info["price"]
                 total_cost += set_info["cost_price"]
-        elif sale["type"] == "drink":
-            drink_info = db.drinks.find_one(
-                {"drink": sale['item_name']})  # Получаем информацию о напитке из базы данных
+                sales_text += f"{item_name} (Сет): {set_info['price']} тг. (Себестоимость: {set_info['cost_price']} тг.)\n"
+        elif sale_type == "drink":
+            drinks_cursor.execute("SELECT cost FROM drinks WHERE drink=?", (item_name,))
+            drink_info = drinks_cursor.fetchone()
             if drink_info:
-                drink_cost = drink_info["cost"]  # Получаем стоимость напитка из базы данных
-                total_cost += drink_cost * sale["quantity"]  # Рассчитываем себестоимость напитка
-                total_price += 690 * sale["quantity"]  # Рассчитываем цену напитка по фиксированной цене продажи
-                sales_text += f"{sale['item_name']} (Напиток x{sale['quantity']}): {690 * sale['quantity']} тг.\n"
+                drink_cost = drink_info[0]
+                total_cost += drink_cost * quantity
+                total_price += 690 * quantity
+                sales_text += f"{item_name} (Напиток x{quantity}): {690 * quantity} тг.\n"
             else:
-                # Если информация о напитке не найдена в базе данных, используем дефолтную стоимость
-                total_cost += sale["quantity"] * 500  # Дефолтная себестоимость напитка
-                total_price += 690 * sale["quantity"]  # Рассчитываем цену напитка по фиксированной цене продажи
-                sales_text += f"{sale['item_name']} (Напиток x{sale['quantity']}): {690 * sale['quantity']} тг.\n"
-        elif sale["type"] == "rest":
-            rest_info = next((r for r in rest if r["name"] == sale["item_name"]), None)
-            if rest_info:
-                total_price += sale["total_price"]  # Используем цену сета из записи в базе данных
-                # Добавляем информацию о продаже сета в чек
-                sales_text += f"{sale['item_name']} (Остальное): {sale['total_price']} тг. (Себестоимость: {rest_info['cost_price']} тг.)\n"
-                # Вычитаем себестоимость сета из общей себестоимости
-                total_cost += rest_info["cost_price"]
+                total_cost += 500 * quantity
+                total_price += 690 * quantity
+                sales_text += f"{item_name} (Напиток x{quantity}): {690 * quantity} тг.\n"
+        elif sale_type == "product":
+            products_cursor.execute("SELECT cost FROM products WHERE product=?", (item_name,))
+            product_info = products_cursor.fetchone()
+            if product_info:
+                product_cost = product_info[0]
+                total_cost += product_cost * quantity
+                total_price += 500 * quantity  # Можно установить фиксированную цену или добавить цену продукта в базу данных
+                sales_text += f"{item_name} (Продукт x{quantity}): {500 * quantity} тг.\n"
+
+    sales_conn.close()
+    drinks_conn.close()
+    products_conn.close()
 
     profit = total_price - total_cost
     sales_text += f"-----------------------------------------------------------\n"
@@ -246,147 +400,342 @@ def handle_sets_category(message):
 def handle_order_category(message):
     category = message.text
 
-    drinks = db.drinks.find()
+    # Подключение к базе данных SQLite для напитков
+    drinks_conn = sqlite3.connect('drinks.db')
+    drinks_cursor = drinks_conn.cursor()
 
+    # Получаем все напитки из таблицы drinks
+    drinks_cursor.execute("SELECT drink FROM drinks")
+    drinks = drinks_cursor.fetchall()
+
+    # Создание разметки для кнопок
     markup = types.InlineKeyboardMarkup(row_width=2)
     for drink in drinks:
-        markup.add(types.InlineKeyboardButton(drink['drink'], callback_data=f"quantity_{drink['drink']}"))
+        # drink - это кортеж, содержащий только один элемент (название напитка)
+        markup.add(types.InlineKeyboardButton(drink[0], callback_data=f"quantity_{drink[0]}"))
+
+    # Закрываем соединение с базой данных для напитков
+    drinks_conn.close()
 
     bot.send_message(message.chat.id, f"Выберите напиток из категории '{category}':", reply_markup=markup)
+
+# @bot.callback_query_handler(func=lambda call: call.data.startswith("quantity_"))
+# def handle_quantity(call):
+#     item_name = call.data.split("_")[1]
+#
+#     # Проверяем, является ли товар напитком
+#     existing_drink = db.drinks.find_one({"drink": item_name})
+#     if existing_drink:
+#         bot.send_message(call.message.chat.id, f"Напишите количество {item_name} в цифрах:")
+#         bot.register_next_step_handler(call.message, lambda message: update_quantity(message, item_name, is_drink=True))
+#         return
+#
+#     # Проверяем, является ли товар продуктом
+#     existing_product = db.products.find_one({"product": item_name})
+#     if existing_product:
+#         bot.send_message(call.message.chat.id, f"Напишите количество {item_name} в цифрах:")
+#         bot.register_next_step_handler(call.message, lambda message: update_quantity(message, item_name, is_drink=False))
+#         return
+#
+#     # Проверяем, является ли товар сетом
+#     selected_set = next((s for s in sets if s["name"] == item_name), None)
+#     if selected_set:
+#         # Проверяем наличие всех необходимых продуктов для сета
+#         enough_products = True
+#         missing_product = None
+#         for ingredient in selected_set["ingredients"]:
+#             if ingredient["type"] == "product":
+#                 existing_product = db.products.find_one({"product": ingredient["name"]})
+#                 if not existing_product or existing_product["quantity"] < ingredient.get("quantity", 0):
+#                     enough_products = False
+#                     missing_product = ingredient["name"]
+#                     break
+#             elif ingredient["type"] == "drink":
+#                 existing_product = db.drinks.find_one({"drink": ingredient["name"]})
+#                 if not existing_product or existing_product["quantity"] < ingredient.get("quantity", 0):
+#                     enough_products = False
+#                     missing_product = ingredient["name"]
+#                     break
+#
+#         if enough_products:
+#             total_set_price = selected_set["price"]
+#             for ingredient in selected_set["ingredients"]:
+#                 if ingredient["type"] == "drink":
+#                     # Обновляем количество проданного напитка
+#                     db.drinks.update_one({"drink": ingredient["name"]}, {"$inc": {"quantity": -1}})
+#                 elif ingredient["type"] == "product":
+#                     # Обновляем количество проданного продукта
+#                     db.products.update_one({"product": ingredient["name"]},
+#                                            {"$inc": {"quantity": -ingredient.get("quantity", 0)}})
+#             # Создаем новую запись о продаже сета
+#             db.sales.insert_one(
+#                 {"item_name": selected_set["name"], "type": "set", "quantity": 1, "total_price": total_set_price})
+#
+#             bot.send_message(call.message.chat.id,
+#                              f"Заказ на сет '{selected_set['name']}' успешно пробит. Цена: {total_set_price} тг.")
+#             handle_start(call.message)
+#         else:
+#             # Выводим сообщение о том, что не хватает продукта для приготовления сета
+#             bot.send_message(call.message.chat.id,
+#                              f"Не хватает продукта '{missing_product}' для приготовления сета '{selected_set['name']}'.")
+#         return
+#
+#     selected_rest = next((r for r in rest if r["name"] == item_name), None)
+#     if selected_rest:
+#         # Проверяем наличие всех необходимых продуктов для категории "Остальное"
+#         enough_products = True
+#         missing_product = None
+#         for ingredient in selected_rest["ingredients"]:
+#             if ingredient["type"] == "product":
+#                 existing_product = db.products.find_one({"product": ingredient["name"]})
+#                 if not existing_product or existing_product["quantity"] < ingredient.get("quantity", 0):
+#                     enough_products = False
+#                     missing_product = ingredient["name"]
+#                     break
+#
+#         if enough_products:
+#             total_set_price = selected_rest["price"]
+#             for ingredient in selected_rest["ingredients"]:
+#                 if ingredient["type"] == "drink":
+#                     # Обновляем количество проданного напитка
+#                     db.drinks.update_one({"drink": ingredient["name"]}, {"$inc": {"quantity": -1}})
+#                 elif ingredient["type"] == "product":
+#                     # Обновляем количество проданного продукта
+#                     db.products.update_one({"product": ingredient["name"]},
+#                                            {"$inc": {"quantity": -ingredient.get("quantity", 0)}})
+#             # Создаем новую запись о продаже сета
+#             db.sales.insert_one(
+#                 {"item_name": selected_rest["name"], "type": "rest", "quantity": 1, "total_price": total_set_price})
+#
+#             bot.send_message(call.message.chat.id,
+#                              f"Заказ на сет '{selected_rest['name']}' успешно пробит. Цена: {total_set_price} тг.")
+#             handle_start(call.message)
+#         else:
+#             # Выводим сообщение о том, что не хватает продукта для приготовления сета
+#             bot.send_message(call.message.chat.id,
+#                              f"Не хватает продукта '{missing_product}' для приготовления сета '{selected_rest['name']}'.")
+#         return
+#
+#     # Если товар не является напитком, продуктом или сетом, обработка ошибки
+#     bot.send_message(call.message.chat.id, "Произошла ошибка. Пожалуйста, попробуйте еще раз.")
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("quantity_"))
 def handle_quantity(call):
     item_name = call.data.split("_")[1]
 
+    # Подключение к базе данных SQLite для напитков
+    drinks_conn = sqlite3.connect('drinks.db')
+    drinks_cursor = drinks_conn.cursor()
+
     # Проверяем, является ли товар напитком
-    existing_drink = db.drinks.find_one({"drink": item_name})
+    drinks_cursor.execute("SELECT * FROM drinks WHERE drink=?", (item_name,))
+    existing_drink = drinks_cursor.fetchone()
+
     if existing_drink:
         bot.send_message(call.message.chat.id, f"Напишите количество {item_name} в цифрах:")
         bot.register_next_step_handler(call.message, lambda message: update_quantity(message, item_name, is_drink=True))
+        drinks_conn.close()
         return
+
+    drinks_conn.close()
+
+    # Подключение к базе данных SQLite для продуктов
+    products_conn = sqlite3.connect('products.db')
+    products_cursor = products_conn.cursor()
 
     # Проверяем, является ли товар продуктом
-    existing_product = db.products.find_one({"product": item_name})
+    products_cursor.execute("SELECT * FROM products WHERE product=?", (item_name,))
+    existing_product = products_cursor.fetchone()
+
     if existing_product:
         bot.send_message(call.message.chat.id, f"Напишите количество {item_name} в цифрах:")
-        bot.register_next_step_handler(call.message, lambda message: update_quantity(message, item_name, is_drink=False))
+        bot.register_next_step_handler(call.message,
+                                       lambda message: update_quantity(message, item_name, is_drink=False))
+        products_conn.close()
         return
 
-    # Проверяем, является ли товар сетом
+    products_conn.close()
+
+    # Проверка на наличие сета
     selected_set = next((s for s in sets if s["name"] == item_name), None)
     if selected_set:
-        # Проверяем наличие всех необходимых продуктов для сета
-        enough_products = True
-        missing_product = None
-        for ingredient in selected_set["ingredients"]:
-            if ingredient["type"] == "product":
-                existing_product = db.products.find_one({"product": ingredient["name"]})
-                if not existing_product or existing_product["quantity"] < ingredient.get("quantity", 0):
-                    enough_products = False
-                    missing_product = ingredient["name"]
-                    break
-            elif ingredient["type"] == "drink":
-                existing_product = db.drinks.find_one({"drink": ingredient["name"]})
-                if not existing_product or existing_product["quantity"] < ingredient.get("quantity", 0):
-                    enough_products = False
-                    missing_product = ingredient["name"]
-                    break
-
-        if enough_products:
-            total_set_price = selected_set["price"]
-            for ingredient in selected_set["ingredients"]:
-                if ingredient["type"] == "drink":
-                    # Обновляем количество проданного напитка
-                    db.drinks.update_one({"drink": ingredient["name"]}, {"$inc": {"quantity": -1}})
-                elif ingredient["type"] == "product":
-                    # Обновляем количество проданного продукта
-                    db.products.update_one({"product": ingredient["name"]},
-                                           {"$inc": {"quantity": -ingredient.get("quantity", 0)}})
-            # Создаем новую запись о продаже сета
-            db.sales.insert_one(
-                {"item_name": selected_set["name"], "type": "set", "quantity": 1, "total_price": total_set_price})
-
-            bot.send_message(call.message.chat.id,
-                             f"Заказ на сет '{selected_set['name']}' успешно пробит. Цена: {total_set_price} тг.")
-            handle_start(call.message)
-        else:
-            # Выводим сообщение о том, что не хватает продукта для приготовления сета
-            bot.send_message(call.message.chat.id,
-                             f"Не хватает продукта '{missing_product}' для приготовления сета '{selected_set['name']}'.")
-        return
-
-    selected_rest = next((r for r in rest if r["name"] == item_name), None)
-    if selected_rest:
-        # Проверяем наличие всех необходимых продуктов для категории "Остальное"
-        enough_products = True
-        missing_product = None
-        for ingredient in selected_rest["ingredients"]:
-            if ingredient["type"] == "product":
-                existing_product = db.products.find_one({"product": ingredient["name"]})
-                if not existing_product or existing_product["quantity"] < ingredient.get("quantity", 0):
-                    enough_products = False
-                    missing_product = ingredient["name"]
-                    break
-
-        if enough_products:
-            total_set_price = selected_rest["price"]
-            for ingredient in selected_rest["ingredients"]:
-                if ingredient["type"] == "drink":
-                    # Обновляем количество проданного напитка
-                    db.drinks.update_one({"drink": ingredient["name"]}, {"$inc": {"quantity": -1}})
-                elif ingredient["type"] == "product":
-                    # Обновляем количество проданного продукта
-                    db.products.update_one({"product": ingredient["name"]},
-                                           {"$inc": {"quantity": -ingredient.get("quantity", 0)}})
-            # Создаем новую запись о продаже сета
-            db.sales.insert_one(
-                {"item_name": selected_rest["name"], "type": "rest", "quantity": 1, "total_price": total_set_price})
-
-            bot.send_message(call.message.chat.id,
-                             f"Заказ на сет '{selected_rest['name']}' успешно пробит. Цена: {total_set_price} тг.")
-            handle_start(call.message)
-        else:
-            # Выводим сообщение о том, что не хватает продукта для приготовления сета
-            bot.send_message(call.message.chat.id,
-                             f"Не хватает продукта '{missing_product}' для приготовления сета '{selected_rest['name']}'.")
+        bot.send_message(call.message.chat.id, f"Напишите количество {item_name} в цифрах:")
+        bot.register_next_step_handler(call.message, lambda message: update_quantity(message, item_name, is_set=True))
         return
 
     # Если товар не является напитком, продуктом или сетом, обработка ошибки
     bot.send_message(call.message.chat.id, "Произошла ошибка. Пожалуйста, попробуйте еще раз.")
 
-def update_quantity(message, item_name, is_drink):
+
+def update_quantity(message, item_name, is_drink=False, is_set=False):
     try:
         quantity = int(message.text)
         if is_drink:
-            drink = db.drinks.find_one({"drink": item_name})
+            # Подключение к базе данных SQLite для напитков
+            drinks_conn = sqlite3.connect('drinks.db')
+            drinks_cursor = drinks_conn.cursor()
+
+            # Проверяем, существует ли такой напиток в базе данных
+            drinks_cursor.execute("SELECT quantity, cost FROM drinks WHERE drink=?", (item_name,))
+            drink = drinks_cursor.fetchone()
             if drink:
-                current_quantity = drink.get("quantity", 0)
+                current_quantity, unit_price = drink
                 if current_quantity >= quantity:
                     new_quantity = current_quantity - quantity
-                    db.drinks.update_one({"drink": item_name}, {"$set": {"quantity": new_quantity}})
-                    # Добавляем запись о продаже в коллекцию "sales"
-                    db.sales.insert_one({"item_name": item_name, "type": "drink", "quantity": quantity})
+                    drinks_cursor.execute("UPDATE drinks SET quantity=? WHERE drink=?", (new_quantity, item_name))
+
+                    # Расчет общей цены
+                    total_price = quantity * unit_price
+
+                    # Добавляем запись о продаже в таблицу "sales"
+                    sales_conn = sqlite3.connect('sales.db')
+                    sales_cursor = sales_conn.cursor()
+                    sales_cursor.execute("INSERT INTO sales (item_name, type, quantity, total_price) VALUES (?, ?, ?, ?)",
+                                         (item_name, "drink", quantity, total_price))
+                    sales_conn.commit()
+                    sales_conn.close()
+
+                    drinks_conn.commit()
                     bot.send_message(message.chat.id, f"Успешно отнято {quantity} '{item_name}'.")
                     handle_start(message)
                 else:
-                    bot.send_message(message.chat.id, f"Недостаточно товара '{item_name}'. Доступное количество: {current_quantity}.")
+                    bot.send_message(message.chat.id,
+                                     f"Недостаточно товара '{item_name}'. Доступное количество: {current_quantity}.")
             else:
                 bot.send_message(message.chat.id, f"Напиток '{item_name}' не найден в базе данных.")
+
+            drinks_conn.close()
+
+        elif is_set:
+            # Проверяем наличие всех необходимых продуктов для сета
+            selected_set = next((s for s in sets if s["name"] == item_name), None)
+            if selected_set:
+                enough_products = True
+                missing_product = None
+                for ingredient in selected_set["ingredients"]:
+                    if ingredient["type"] == "product":
+                        products_conn = sqlite3.connect('products.db')
+                        products_cursor = products_conn.cursor()
+                        products_cursor.execute("SELECT quantity FROM products WHERE product=?", (ingredient["name"],))
+                        existing_product = products_cursor.fetchone()
+                        if not existing_product or existing_product[0] < ingredient["quantity"] * quantity:
+                            enough_products = False
+                            missing_product = ingredient["name"]
+                            break
+                        products_conn.close()
+                    elif ingredient["type"] == "drink":
+                        drinks_conn = sqlite3.connect('drinks.db')
+                        drinks_cursor = drinks_conn.cursor()
+                        drinks_cursor.execute("SELECT quantity FROM drinks WHERE drink=?", (ingredient["name"],))
+                        existing_drink = drinks_cursor.fetchone()
+                        if not existing_drink or existing_drink[0] < ingredient["quantity"] * quantity:
+                            enough_products = False
+                            missing_product = ingredient["name"]
+                            break
+                        drinks_conn.close()
+
+                if enough_products:
+                    total_set_price = selected_set["price"] * quantity
+                    for ingredient in selected_set["ingredients"]:
+                        if ingredient["type"] == "drink":
+                            # Обновляем количество проданного напитка
+                            drinks_conn = sqlite3.connect('drinks.db')
+                            drinks_cursor = drinks_conn.cursor()
+                            drinks_cursor.execute("UPDATE drinks SET quantity=quantity-? WHERE drink=?",
+                                                  (ingredient["quantity"] * quantity, ingredient["name"]))
+                            drinks_conn.commit()
+                            drinks_conn.close()
+                        elif ingredient["type"] == "product":
+                            # Обновляем количество проданного продукта
+                            products_conn = sqlite3.connect('products.db')
+                            products_cursor = products_conn.cursor()
+                            products_cursor.execute("UPDATE products SET quantity=quantity-? WHERE product=?",
+                                                    (ingredient["quantity"] * quantity, ingredient["name"]))
+                            products_conn.commit()
+                            products_conn.close()
+
+                    # Создаем новую запись о продаже сета
+                    sales_conn = sqlite3.connect('sales.db')
+                    sales_cursor = sales_conn.cursor()
+                    sales_cursor.execute("INSERT INTO sales (item_name, type, quantity, total_price) VALUES (?, ?, ?, ?)",
+                                         (selected_set["name"], "set", quantity, total_set_price))
+                    sales_conn.commit()
+                    sales_conn.close()
+
+                    bot.send_message(message.chat.id,
+                                     f"Заказ на сет '{selected_set['name']}' успешно пробит. Цена: {total_set_price} тг.")
+                    handle_start(message)
+                else:
+                    # Выводим сообщение о том, что не хватает продукта для приготовления сета
+                    bot.send_message(message.chat.id,
+                                     f"Не хватает продукта '{missing_product}' для приготовления сета '{selected_set['name']}'.")
+            else:
+                bot.send_message(message.chat.id, f"Сет '{item_name}' не найден в базе данных.")
+
         else:
-            product = db.products.find_one({"product": item_name})
+            # Подключение к базе данных SQLite для продуктов
+            products_conn = sqlite3.connect('products.db')
+            products_cursor = products_conn.cursor()
+
+            # Проверяем, существует ли такой продукт в базе данных
+            products_cursor.execute("SELECT quantity FROM products WHERE product=?", (item_name,))
+            product = products_cursor.fetchone()
             if product:
-                current_quantity = product.get("quantity", 0)
+                current_quantity = product[0]
                 new_quantity = current_quantity - quantity
-                db.products.update_one({"product": item_name}, {"$set": {"quantity": new_quantity}})
-                # Добавляем запись о продаже в коллекцию "sales"
-                db.sales.insert_one({"item_name": item_name, "type": "product", "quantity": quantity})
+                products_cursor.execute("UPDATE products SET quantity=? WHERE product=?", (new_quantity, item_name))
+
+                # Добавляем запись о продаже в таблицу "sales"
+                sales_conn = sqlite3.connect('sales.db')
+                sales_cursor = sales_conn.cursor()
+                sales_cursor.execute("INSERT INTO sales (item_name, type, quantity) VALUES (?, ?, ?)",
+                                     (item_name, "product", quantity))
+                sales_conn.commit()
+                sales_conn.close()
+
+                products_conn.commit()
                 bot.send_message(message.chat.id, f"Успешно отнято {quantity} '{item_name}'.")
                 handle_start(message)
             else:
                 bot.send_message(message.chat.id, f"Продукт '{item_name}' не найден в базе данных.")
+
+            products_conn.close()
+
     except ValueError:
         bot.send_message(message.chat.id, "Пожалуйста, введите число.")
+# def update_quantity(message, item_name, is_drink):
+#     try:
+#         quantity = int(message.text)
+#         if is_drink:
+#             drink = db.drinks.find_one({"drink": item_name})
+#             if drink:
+#                 current_quantity = drink.get("quantity", 0)
+#                 if current_quantity >= quantity:
+#                     new_quantity = current_quantity - quantity
+#                     db.drinks.update_one({"drink": item_name}, {"$set": {"quantity": new_quantity}})
+#                     # Добавляем запись о продаже в коллекцию "sales"
+#                     db.sales.insert_one({"item_name": item_name, "type": "drink", "quantity": quantity})
+#                     bot.send_message(message.chat.id, f"Успешно отнято {quantity} '{item_name}'.")
+#                     handle_start(message)
+#                 else:
+#                     bot.send_message(message.chat.id, f"Недостаточно товара '{item_name}'. Доступное количество: {current_quantity}.")
+#             else:
+#                 bot.send_message(message.chat.id, f"Напиток '{item_name}' не найден в базе данных.")
+#         else:
+#             product = db.products.find_one({"product": item_name})
+#             if product:
+#                 current_quantity = product.get("quantity", 0)
+#                 new_quantity = current_quantity - quantity
+#                 db.products.update_one({"product": item_name}, {"$set": {"quantity": new_quantity}})
+#                 # Добавляем запись о продаже в коллекцию "sales"
+#                 db.sales.insert_one({"item_name": item_name, "type": "product", "quantity": quantity})
+#                 bot.send_message(message.chat.id, f"Успешно отнято {quantity} '{item_name}'.")
+#                 handle_start(message)
+#             else:
+#                 bot.send_message(message.chat.id, f"Продукт '{item_name}' не найден в базе данных.")
+#     except ValueError:
+#         bot.send_message(message.chat.id, "Пожалуйста, введите число.")
 
 
 # Обработчик кнопки "Количество товаров и их наименование"
@@ -394,19 +743,55 @@ def update_quantity(message, item_name, is_drink):
 def handle_products_quantity(message):
     response = "Количество товаров и их наименование:\n"
 
-    # Получаем все напитки
-    drinks = db.drinks.find()
+    # Подключение к базе данных SQLite для напитков
+    drinks_conn = sqlite3.connect('drinks.db')
+    drinks_cursor = drinks_conn.cursor()
+
+    # Получаем все напитки из таблицы drinks
+    drinks_cursor.execute("SELECT drink, quantity FROM drinks")
+    drinks = drinks_cursor.fetchall()
+
     response += "----------------------------------------------\nНапитки🧊:\n"
     for drink in drinks:
-        response += f"{drink['drink']}: {drink['quantity']}\n"
+        response += f"{drink[0]}: {drink[1]}\n"
 
-    # Получаем все продукты
-    products = db.products.find()
+    # Закрываем соединение с базой данных для напитков
+    drinks_conn.close()
+
+    # Подключение к базе данных SQLite для продуктов
+    products_conn = sqlite3.connect('products.db')
+    products_cursor = products_conn.cursor()
+
+    # Получаем все продукты из таблицы products
+    products_cursor.execute("SELECT product, quantity FROM products")
+    products = products_cursor.fetchall()
+
     response += "----------------------------------------------\nПродукты🍞:\n"
     for product in products:
-        response += f"{product['product']}: {product['quantity']}гр.\n"
+        response += f"{product[0]}: {product[1]}гр.\n"
+
+    # Закрываем соединение с базой данных для продуктов
+    products_conn.close()
 
     bot.send_message(message.chat.id, response)
+
+# @bot.message_handler(func=lambda message: message.text == "Количество товаров и их наименование 📝")
+# def handle_products_quantity(message):
+#     response = "Количество товаров и их наименование:\n"
+#
+#     # Получаем все напитки
+#     drinks = db.drinks.find()
+#     response += "----------------------------------------------\nНапитки🧊:\n"
+#     for drink in drinks:
+#         response += f"{drink['drink']}: {drink['quantity']}\n"
+#
+#     # Получаем все продукты
+#     products = db.products.find()
+#     response += "----------------------------------------------\nПродукты🍞:\n"
+#     for product in products:
+#         response += f"{product['product']}: {product['quantity']}гр.\n"
+#
+#     bot.send_message(message.chat.id, response)
 
 
 # Обработчик кнопки "Добавить товар"
@@ -497,21 +882,61 @@ def handle_product_quantity(message):
         return
 
     # Проверяем, существует ли уже такой продукт в базе данных
-    existing_product = db.products.find_one({"product": product_name})
+    # existing_product = db.products.find_one({"product": product_name})
+    # if existing_product:
+    #     # Если продукт уже существует, обновляем его количество
+    #     new_quantity = existing_product["quantity"] + quantity_grams
+    #     db.products.update_one({"product": product_name}, {"$set": {"quantity": new_quantity}})
+    # else:
+    #     # Если продукта нет в базе данных, добавляем новую запись
+    #     db.products.insert_one(
+    #         {"user_id": user_id, "product": product_name, "quantity": quantity_grams})
+    #
+    # # Удаляем информацию о выбранном продукте
+    # del selected_product[user_id]
+    #
+    # bot.send_message(user_id, f"Сохранено: {product_name}: {quantity_grams} гр.")
+    sqlite_conn = sqlite3.connect('products.db')
+    sqlite_cursor = sqlite_conn.cursor()
+
+    # Проверяем, существует ли уже такой продукт в базе данных
+    sqlite_cursor.execute("SELECT * FROM products WHERE user_id=? AND product=?", (user_id, product_name))
+    existing_product = sqlite_cursor.fetchone()
+
     if existing_product:
         # Если продукт уже существует, обновляем его количество
-        new_quantity = existing_product["quantity"] + quantity_grams
-        db.products.update_one({"product": product_name}, {"$set": {"quantity": new_quantity}})
+        new_quantity = existing_product[2] + quantity_grams  # 2 - это индекс колонки quantity
+        sqlite_cursor.execute("UPDATE products SET quantity=? WHERE user_id=? AND product=?",
+                              (new_quantity, user_id, product_name))
     else:
         # Если продукта нет в базе данных, добавляем новую запись
-        db.products.insert_one(
-            {"user_id": user_id, "product": product_name, "quantity": quantity_grams})
+        sqlite_cursor.execute("INSERT INTO products (user_id, product, quantity) VALUES (?, ?, ?)",
+                              (user_id, product_name, quantity_grams))
 
     # Удаляем информацию о выбранном продукте
     del selected_product[user_id]
 
     bot.send_message(user_id, f"Сохранено: {product_name}: {quantity_grams} гр.")
     handle_start(message)
+
+    # Закрываем соединение с базой данных SQLite
+    sqlite_conn.commit()
+    sqlite_conn.close()
+    handle_start(message)
+
+@bot.message_handler(commands=['clear_all_products'])
+def clear_all_drinks(message):
+    # Подключение к базе данных SQLite
+    sqlite_conn = sqlite3.connect('products.db')
+    sqlite_cursor = sqlite_conn.cursor()
+
+    # Удаление всех записей из таблицы drinks
+    sqlite_cursor.execute("DELETE FROM products")
+    sqlite_conn.commit()
+    sqlite_conn.close()
+
+    bot.send_message(message.chat.id, "Все данные о напитках были успешно удалены из базы данных.")
+
 
 
 # @bot.message_handler(func=lambda message: message.chat.id in selected_drink and message.text.isdigit())
@@ -534,6 +959,7 @@ def handle_product_quantity(message):
 #         bot.send_message(user_id, "Введите стоимость напитка:")
 #         bot.register_next_step_handler(message, lambda m: save_drink_data(user_id, drink_name, quantity, m.text))
 
+# Обработчик ввода количества напитка
 @bot.message_handler(func=lambda message: message.chat.id in selected_drink and message.text.isdigit())
 def handle_drink_quantity(message):
     user_id = message.chat.id
@@ -541,42 +967,57 @@ def handle_drink_quantity(message):
     quantity = message.text
 
     bot.send_message(user_id, "Введите стоимость напитка:")
-    bot.register_next_step_handler(message, lambda m: save_drink_data(user_id, drink_name, quantity, m.text))
+    bot.register_next_step_handler(message, lambda m: save_drink_data(user_id, drink_name, quantity, m.text, message))
 
-    def save_drink_data(user_id, drink_name, quantity, cost):
-        # Преобразуем количество и стоимость в числовой формат
-        try:
-            quantity = int(quantity)
-            cost = float(cost)
-        except ValueError:
-            bot.send_message(user_id, "Пожалуйста, введите корректные данные.")
-            return
+def save_drink_data(user_id, drink_name, quantity, cost, message):
+    # Преобразуем количество и стоимость в числовой формат
+    try:
+        quantity = int(quantity)
+        cost = float(cost)
+    except ValueError:
+        bot.send_message(user_id, "Пожалуйста, введите корректные данные.")
+        return
 
-        # Подключение к базе данных SQLite
-        sqlite_conn = sqlite3.connect('drinks.db')
-        sqlite_cursor = sqlite_conn.cursor()
+    # Подключение к базе данных SQLite
+    sqlite_conn = sqlite3.connect('drinks.db')
+    sqlite_cursor = sqlite_conn.cursor()
 
-        # Проверяем, существует ли уже такой напиток в базе данных
-        sqlite_cursor.execute("SELECT * FROM drinks WHERE user_id=? AND drink=?", (user_id, drink_name))
-        existing_drink = sqlite_cursor.fetchone()
+    # Проверяем, существует ли уже такой напиток в базе данных
+    sqlite_cursor.execute("SELECT * FROM drinks WHERE user_id=? AND drink=?", (user_id, drink_name))
+    existing_drink = sqlite_cursor.fetchone()
 
-        if existing_drink:
-            # Если напиток уже существует, обновляем его количество
-            new_quantity = existing_drink[3] + quantity  # 3 - это индекс колонки quantity
-            sqlite_cursor.execute("UPDATE drinks SET quantity=? WHERE user_id=? AND drink=?",
-                                  (new_quantity, user_id, drink_name))
-            sqlite_conn.commit()
-            bot.send_message(user_id, f"Количество {drink_name} обновлено: {new_quantity} шт.")
-        else:
-            # Если напитка нет в базе данных, добавляем новую запись
-            sqlite_cursor.execute("INSERT INTO drinks (user_id, drink, quantity, cost) VALUES (?, ?, ?, ?)",
-                                  (user_id, drink_name, quantity, cost))
-            sqlite_conn.commit()
-            bot.send_message(user_id, f"Сохранено: {drink_name}: {quantity} шт., стоимость: {cost} тг.")
+    if existing_drink:
+        # Если напиток уже существует, обновляем его количество
+        new_quantity = existing_drink[3] + quantity  # 3 - это индекс колонки quantity
+        sqlite_cursor.execute("UPDATE drinks SET quantity=? WHERE user_id=? AND drink=?",
+                              (new_quantity, user_id, drink_name))
+        sqlite_conn.commit()
+        bot.send_message(user_id, f"Количество {drink_name} обновлено: {new_quantity} шт.")
+    else:
+        # Если напитка нет в базе данных, добавляем новую запись
+        sqlite_cursor.execute("INSERT INTO drinks (user_id, drink, quantity, cost) VALUES (?, ?, ?, ?)",
+                              (user_id, drink_name, quantity, cost))
+        sqlite_conn.commit()
+        bot.send_message(user_id, f"Сохранено: {drink_name}: {quantity} шт., стоимость: {cost} тг.")
 
-        # Закрываем соединение с базой данных SQLite
-        sqlite_conn.close()
+    # Закрываем соединение с базой данных SQLite
+    sqlite_conn.close()
+    handle_start(message)
 
-# Запускаем бот
+
+# Обработчик команды /clear_all_drinks
+@bot.message_handler(commands=['clear_all_drinks'])
+def clear_all_drinks(message):
+    # Подключение к базе данных SQLite
+    sqlite_conn = sqlite3.connect('drinks.db')
+    sqlite_cursor = sqlite_conn.cursor()
+
+    # Удаление всех записей из таблицы drinks
+    sqlite_cursor.execute("DELETE FROM drinks")
+    sqlite_conn.commit()
+    sqlite_conn.close()
+
+    bot.send_message(message.chat.id, "Все данные о напитках были успешно удалены из базы данных.")
+
+# Запуск бота
 bot.polling()
-
