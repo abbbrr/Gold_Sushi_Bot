@@ -56,13 +56,24 @@ def handle_total_month_sales(message):
     draw = ImageDraw.Draw(image)
 
     # Загрузка шрифта
-    font = ImageFont.truetype("Roboto-Bold.ttf", size=15)
+    font = ImageFont.truetype("Roboto-Bold.ttf", size=10)
 
     # Добавление текста о текущем месяце и годе
-    draw.text((10, 10), f"---------------------------Отчет за {current_month_year}-----------------------------", fill="black", font=font)
+    draw.text((10, 10), f"---------------------------------------------------Отчет за {current_month_year}------------------------------------------------", fill="black", font=font)
 
-    # Добавление текста о проданных товарах на фотографию
-    # Здесь должен быть код для получения информации о продажах за месяц и формирования текста
+    # Получение данных из базы данных month.db
+    conn = sqlite3.connect('month.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT date, earnings, costs, net_earnings FROM month_sales")
+    sales_data = cursor.fetchall()
+    conn.close()
+
+    # Добавление текста о продажах за месяц на фотографию
+    y_position = 30
+    for sale in sales_data:
+        sale_text = f"{sale[0]}: Прибыль: {sale[1]}, Себестоимость: {sale[2]}, Чистая прибыль: {sale[3]}"
+        draw.text((10, y_position), sale_text, fill="black", font=font)
+        y_position += 20
 
     # Сохранение фотографии с информацией о проданных товарах за месяц
     image.save("sales_month_report.png")
@@ -70,6 +81,14 @@ def handle_total_month_sales(message):
     # Отправка фотографии пользователю
     bot.send_photo(message.chat.id, open("sales_month_report.png", "rb"))
 
+@bot.message_handler(commands=['clear_month'])
+def handle_clear_month_data(message):
+    conn = sqlite3.connect('month.db')
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM month_sales")
+    conn.commit()
+    conn.close()
+    bot.send_message(message.chat.id, "Данные за текущий месяц успешно удалены.")
 
 # Обработчик команды "Закрыть день 🚫"
 @bot.message_handler(func=lambda message: message.text == "Закрыть день 🚫")
@@ -996,7 +1015,7 @@ def clear_all_drinks(message):
     sqlite_conn.commit()
     sqlite_conn.close()
 
-    bot.send_message(message.chat.id, "Все данные о напитках были успешно удалены из базы данных.")
+    bot.send_message(message.chat.id, "Все данные о продуктах были успешно удалены из базы данных.")
 
 
 
