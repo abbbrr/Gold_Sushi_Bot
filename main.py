@@ -298,6 +298,12 @@ def handle_total_sales(message):
                 total_price += set_info["price"]
                 total_cost += set_info["cost_price"]
                 sales_text += f"{item_name} (Сет): {set_info['price']} тг. (Себестоимость: {set_info['cost_price']} тг.)\n"
+        elif sale_type == "rest":
+            rest_info = next((r for r in rest if r["name"] == item_name), None)
+            if rest_info:
+                total_price += rest_info["price"]
+                total_cost += rest_info["cost_price"]
+                sales_text += f"{item_name} (Сет): {rest_info['price']} тг. (Себестоимость: {rest_info['cost_price']} тг.)\n"
         elif sale_type == "drink":
             drinks_cursor.execute("SELECT cost FROM drinks WHERE drink=?", (item_name,))
             drink_info = drinks_cursor.fetchone()
@@ -564,11 +570,16 @@ def handle_quantity(call):
         bot.register_next_step_handler(call.message, lambda message: update_quantity(message, item_name, is_set=True))
         return
 
+    selected_rest = next((r for r in rest if r["name"] == item_name), None)
+    if selected_rest:
+        bot.send_message(call.message.chat.id, f"Напишите количество {item_name} в цифрах:")
+        bot.register_next_step_handler(call.message, lambda message: update_quantity(message, item_name, is_rest = True))
+
     # Если товар не является напитком, продуктом или сетом, обработка ошибки
     bot.send_message(call.message.chat.id, "Произошла ошибка. Пожалуйста, попробуйте еще раз.")
 
 
-def update_quantity(message, item_name, is_drink=False, is_set=False):
+def update_quantity(message, item_name, is_drink=False, is_set=False, is_rest=False):
     try:
         quantity = int(message.text)
         if is_drink:
@@ -672,6 +683,56 @@ def update_quantity(message, item_name, is_drink=False, is_set=False):
                                      f"Не хватает продукта '{missing_product}' для приготовления сета '{selected_set['name']}'.")
             else:
                 bot.send_message(message.chat.id, f"Сет '{item_name}' не найден в базе данных.")
+
+        elif is_rest:
+            selected_rest = next((r for r in rest if r["name"] == item_name), None)
+            if selected_rest:
+                enough_products = True
+                missing_product = None
+                for ingredient in selected_rest["ingredients"]:
+                    if ingredient["type"] == "product":
+                        products_conn = sqlite3.connect('products.db')
+                        products_cursor = products_conn.cursor()
+                        products_cursor.execute("SELECT quantity FROM products WHERE product=?", (ingredient["name"],))
+                        existing_product = products_cursor.fetchone()
+                        if not existing_product or existing_product[0] < ingredient["quantity"] * quantity:
+                            enough_products = False
+                            missing_product = ingredient["name"]
+                            break
+                        products_conn.close()
+
+                if enough_products:
+                    total_set_price = selected_rest["price"] * quantity
+                    for ingredient in selected_rest["ingredients"]:
+                        if  ingredient["type"] == "product":
+                            # Обновляем количество проданного продукта
+                            products_conn = sqlite3.connect('products.db')
+                            products_cursor = products_conn.cursor()
+                            products_cursor.execute("UPDATE products SET quantity=quantity-? WHERE product=?",
+                                                    (ingredient["quantity"] * quantity, ingredient["name"]))
+                            products_conn.commit()
+                            products_conn.close()
+
+
+                    # Создаем новую запись о продаже сета
+                    sales_conn = sqlite3.connect('sales.db')
+                    sales_cursor = sales_conn.cursor()
+                    sales_cursor.execute(
+                        "INSERT INTO sales (item_name, type, quantity, total_price) VALUES (?, ?, ?, ?)",
+                        (selected_rest["name"], "rest", quantity, total_set_price))
+                    sales_conn.commit()
+                    sales_conn.close()
+
+                    bot.send_message(message.chat.id,
+                                     f"Заказ на сет '{selected_rest['name']}' успешно пробит. Цена: {total_set_price} тг.")
+                    handle_start(message)
+                else:
+                    # Выводим сообщение о том, что не хватает продукта для приготовления сета
+                    bot.send_message(message.chat.id,
+                                     f"Не хватает продукта '{missing_product}' для приготовления сета '{selected_rest['name']}'.")
+            else:
+                bot.send_message(message.chat.id, f"Сет '{item_name}' не найден в базе данных.")
+
 
         else:
             # Подключение к базе данных SQLite для продуктов

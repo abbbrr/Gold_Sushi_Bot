@@ -1,15 +1,15 @@
 sets = [
-    {"name": "Сет Токио", "price": 6290, "cost_price": 4000, "ingredients": [
+    {"name": "Сет Токио", "price": 6290, "cost_price": 2433, "ingredients": [
         {"type": "drink", "name": "Cola", "quantity": 1},
         {"type": "product", "name": "Рис", "quantity": 350},
         {"type": "product", "name": "Огурцы", "quantity": 200}
     ]},
-    {"name": "Сет Любовь", "price": 4990, "cost_price": 4000, "ingredients": [
+    {"name": "Сет Любовь", "price": 4990, "cost_price": 2223, "ingredients": [
         {"type": "drink", "name": "Cola", "quantity": 1},
         {"type": "product", "name": "Мука", "quantity": 350},
         {"type": "product", "name": "Картошка", "quantity": 200}
     ]},
-    {"name": "Сет Шымкент", "price": 7990, "cost_price": 4000, "ingredients": [
+    {"name": "Сет Шымкент", "price": 7990, "cost_price": 2983, "ingredients": [
         {"type": "drink", "name": "Cola", "quantity": 1},
         {"type": "product", "name": "Мука", "quantity": 350},
         {"type": "product", "name": "Картошка", "quantity": 200}
@@ -24,7 +24,7 @@ sets = [
         {"type": "product", "name": "Мука", "quantity": 350},
         {"type": "product", "name": "Картошка", "quantity": 200}
     ]},
-    {"name": "Сет Пара", "price": 6490, "cost_price": 3509, "ingredients": [
+    {"name": "Сет Пара", "price": 6490, "cost_price": 3174, "ingredients": [
         {"type": "drink", "name": "Cola", "quantity": 1},
         {"type": "product", "name": "Мука", "quantity": 350},
         {"type": "product", "name": "Картошка", "quantity": 200}
@@ -45,6 +45,11 @@ sets = [
         {"type": "product", "name": "Картошка", "quantity": 200}
     ]},
     {"name": "Сет Жаренный", "price": 6490, "cost_price": 2952, "ingredients": [
+        {"type": "drink", "name": "Cola", "quantity": 1},
+        {"type": "product", "name": "Мука", "quantity": 350},
+        {"type": "product", "name": "Картошка", "quantity": 200}
+    ]},
+    {"name": "Сет Счастья", "price": 5290, "cost_price": 2717, "ingredients": [
         {"type": "drink", "name": "Cola", "quantity": 1},
         {"type": "product", "name": "Мука", "quantity": 350},
         {"type": "product", "name": "Картошка", "quantity": 200}
