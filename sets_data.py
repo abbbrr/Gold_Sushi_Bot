@@ -145,7 +145,7 @@ sets = [
         {"type": "product", "name": "Листья Салата", "quantity": 23},
         {"type": "product", "name": "Курица", "quantity": 23},
         {"type": "product", "name": "Майонез", "quantity": 10},
-        {"type": "product", "name": "Сыр Моцарелла", "quantity": 100}
+        {"type": "product", "name": "Сыр Моцарелла", "quantity": 100},
         {"type": "product", "name": "Масаго", "quantity": 17},
         {"type": "product", "name": "Тесто", "quantity": 500},
         {"type": "product", "name": "Сыр", "quantity": 200},
