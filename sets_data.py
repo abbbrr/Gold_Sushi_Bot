@@ -8,7 +8,7 @@ sets = [
         {"type": "product", "name": "Огурцы", "quantity": 85},
         {"type": "product", "name": "Унаги Соус", "quantity": 40},
         {"type": "product", "name": "Кунжут", "quantity": 5},
-        {"type": "product", "name": "Листья Салата", "quantity": 23},
+        {"type": "product", "name": "Листья Салат", "quantity": 23},
         {"type": "product", "name": "Майонез", "quantity": 10},
         {"type": "product", "name": "Тесто", "quantity": 250},
         {"type": "product", "name": "Сыр", "quantity": 100},
@@ -40,7 +40,7 @@ sets = [
         {"type": "product", "name": "Унаги Соус", "quantity": 40},
         {"type": "product", "name": "Кунжут", "quantity": 28},
         {"type": "product", "name": "Курица", "quantity": 23},
-        {"type": "product", "name": "Листья Салата", "quantity": 23},
+        {"type": "product", "name": "Листья Салат", "quantity": 23},
         {"type": "product", "name": "Майонез", "quantity": 10},
         {"type": "product", "name": "Сыр Моцарелла", "quantity": 100},
         {"type": "product", "name": "Тесто", "quantity": 250},
@@ -57,10 +57,11 @@ sets = [
         {"type": "product", "name": "Огурцы", "quantity": 92},
         {"type": "product", "name": "Унаги Соус", "quantity": 40},
         {"type": "product", "name": "Кунжут", "quantity": 28},
-        {"type": "product", "name": "Листья Салата", "quantity": 23},
+        {"type": "product", "name": "Листья Салат", "quantity": 23},
         {"type": "product", "name": "Курица", "quantity": 23},
         {"type": "product", "name": "Майонез", "quantity": 10},
         {"type": "product", "name": "Сыр Моцарелла", "quantity": 100},
+        {"type": "product", "name": "Спайси", "quantity": 35},
         {"type": "product", "name": "Тесто", "quantity": 250},
         {"type": "product", "name": "Сыр", "quantity": 100},
         {"type": "product", "name": "Пицца соус", "quantity": 50},
@@ -113,7 +114,7 @@ sets = [
         {"type": "product", "name": "Тесто", "quantity": 500},
         {"type": "product", "name": "Сыр", "quantity": 200},
         {"type": "product", "name": "Пицца соус", "quantity": 100},
-        {"type": "product", "name": "Томат", "quantity": 100},
+        {"type": "product", "name": "Томато", "quantity": 100},
         {"type": "product", "name": "Колбаса", "quantity": 100}
     ]},
     {"name": "Сет Астана", "price": 7990, "cost_price": 3666, "ingredients": [
@@ -142,7 +143,7 @@ sets = [
         {"type": "product", "name": "Огурцы", "quantity": 130},
         {"type": "product", "name": "Унаги Соус", "quantity": 40},
         {"type": "product", "name": "Кунжут", "quantity": 48},
-        {"type": "product", "name": "Листья Салата", "quantity": 23},
+        {"type": "product", "name": "Листья Салат", "quantity": 23},
         {"type": "product", "name": "Курица", "quantity": 23},
         {"type": "product", "name": "Майонез", "quantity": 10},
         {"type": "product", "name": "Сыр Моцарелла", "quantity": 100},
@@ -151,7 +152,7 @@ sets = [
         {"type": "product", "name": "Сыр", "quantity": 200},
         {"type": "product", "name": "Пицца соус", "quantity": 100},
         {"type": "product", "name": "Грибы", "quantity": 38},
-        {"type": "product", "name": "Томат", "quantity": 38},
+        {"type": "product", "name": "Томато", "quantity": 38},
         {"type": "product", "name": "Колбаса", "quantity": 138},
         {"type": "product", "name": "Курица", "quantity": 38}
     ]},
@@ -162,7 +163,7 @@ sets = [
         {"type": "product", "name": "Огурцы", "quantity": 88},
         {"type": "product", "name": "Ласось", "quantity": 66},
         {"type": "product", "name": "Твор Сыр", "quantity": 85},
-        {"type": "product", "name": "Унаги", "quantity": 40},
+        {"type": "product", "name": "Унаги Соус", "quantity": 40},
         {"type": "product", "name": "Кунжут", "quantity": 5},
         {"type": "product", "name": "Курица", "quantity": 23},
         {"type": "product", "name": "Майонез", "quantity": 10},
@@ -171,7 +172,7 @@ sets = [
         {"type": "product", "name": "Тесто", "quantity": 250},
         {"type": "product", "name": "Сыр", "quantity": 100},
         {"type": "product", "name": "Пицца соус", "quantity": 50},
-        {"type": "product", "name": "Томат", "quantity": 100}
+        {"type": "product", "name": "Томато", "quantity": 100}
     ]},
     {"name": "Сет Счастья", "price": 5290, "cost_price": 2717, "ingredients": [
         {"type": "drink", "name": "Cola", "quantity": 1},
@@ -184,7 +185,7 @@ rest = [
     {"name": "Цезарь роллы🍣", "price": 1990, "cost_price": 359, "ingredients": [
         {"type": "product", "name": "Рис", "quantity": 120},
         {"type": "product", "name": "Нори", "quantity": 1},
-        {"type": "product", "name": "Листья Салата", "quantity": 23},
+        {"type": "product", "name": "Листья Салат", "quantity": 23},
         {"type": "product", "name": "Курица", "quantity": 23},
         {"type": "product", "name": "Огурцы", "quantity": 15},
         {"type": "product", "name": "Майонез", "quantity": 10}
@@ -311,7 +312,7 @@ rest = [
         {"type": "product", "name": "Тесто", "quantity": 250},
         {"type": "product", "name": "Сыр", "quantity": 100},
         {"type": "product", "name": "Пицца соус", "quantity": 50},
-        {"type": "product", "name": "Томат", "quantity": 100}
+        {"type": "product", "name": "Томато", "quantity": 100}
     ]},
     {"name": "Пепперони🍕", "price": 2290, "cost_price": 556, "ingredients": [
         {"type": "product", "name": "Тесто", "quantity": 250},
@@ -331,7 +332,7 @@ rest = [
         {"type": "product", "name": "Сыр", "quantity": 100},
         {"type": "product", "name": "Пицца соус", "quantity": 50},
         {"type": "product", "name": "Грибы", "quantity": 38},
-        {"type": "product", "name": "Томат", "quantity": 38},
+        {"type": "product", "name": "Томато", "quantity": 38},
         {"type": "product", "name": "Колбаса", "quantity": 38},
         {"type": "product", "name": "Курица", "quantity": 38}
     ]},

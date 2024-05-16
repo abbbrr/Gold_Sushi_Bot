@@ -305,6 +305,9 @@ def handle_total_sales(message):
     drinks_cursor = drinks_conn.cursor()
     products_cursor = products_conn.cursor()
 
+    sold_sets = {}
+    sold_rests = {}
+
     # Получение информации о проданных товарах из базы данных
     sales_cursor.execute("SELECT item_name, type, quantity FROM sales")
     sales = sales_cursor.fetchall()
@@ -314,15 +317,27 @@ def handle_total_sales(message):
         if sale_type == "set":
             set_info = next((s for s in sets if s["name"] == item_name), None)
             if set_info:
-                total_price += set_info["price"]
-                total_cost += set_info["cost_price"]
-                sales_text += f"{item_name} (Сет): {set_info['price']} тг. (Себестоимость: {set_info['cost_price']} тг.)\n"
+                # total_price += set_info["price"]
+                # total_cost += set_info["cost_price"]
+                total_price += set_info["price"] * quantity
+                total_cost += set_info["cost_price"] * quantity
+                if item_name in sold_sets:
+                    sold_sets[item_name] += quantity
+                else:
+                    sold_sets[item_name] = quantity
+                sales_text += f"{item_name} (Сет): {set_info['price']} тг. (Себестоимость: {set_info['cost_price']} тг.) x{quantity}\n"
         elif sale_type == "rest":
             rest_info = next((r for r in rest if r["name"] == item_name), None)
             if rest_info:
-                total_price += rest_info["price"]
-                total_cost += rest_info["cost_price"]
-                sales_text += f"{item_name} (Сет): {rest_info['price']} тг. (Себестоимость: {rest_info['cost_price']} тг.)\n"
+                # total_price += rest_info["price"]
+                # total_cost += rest_info["cost_price"]
+                total_price += rest_info["price"] * quantity
+                total_cost += rest_info["cost_price"] * quantity
+                if item_name in sold_rests:
+                    sold_rests[item_name] += quantity
+                else:
+                    sold_rests[item_name] = quantity
+                sales_text += f"{item_name} (Остальное): {rest_info['price']} тг. (Себестоимость: {rest_info['cost_price']} тг.) x{quantity}\n"
         elif sale_type == "drink":
             drinks_cursor.execute("SELECT cost FROM drinks WHERE drink=?", (item_name,))
             drink_info = drinks_cursor.fetchone()
@@ -926,7 +941,8 @@ def handle_products(message):
     item23 = types.KeyboardButton("Колбаса")
     item24 = types.KeyboardButton("Курица")
     item25 = types.KeyboardButton("Грибы")
-    markup.add(item1, item2, item3, item4, item5, item6, item7, item8, item9, item10, item11, item12,item13, item14, item15, item16, item17, item18,item19,item20,item21,item22,item23, item24, item25)
+    item26 = types.KeyboardButton("Краб")
+    markup.add(item1, item2, item3, item4, item5, item6, item7, item8, item9, item10, item11, item12,item13, item14, item15, item16, item17, item18,item19,item20,item21,item22,item23, item24, item25,item26)
     bot.send_message(message.chat.id, "Выберите продукт:", reply_markup=markup)
 
 
@@ -940,7 +956,7 @@ def handle_selected_drink(message):
     bot.send_message(message.chat.id, f"Напишите количество {drink_name} в цифрах:")
 
 # Обработчик выбора продукта
-@bot.message_handler(func=lambda message: message.text in ["Рис", "Нори", "Ласось", "Твор Сыр", "Угорь", "Огурцы", "Листья Салат", "Майонез", "Курица", "Снеж Краб", "Плавленный Сыр", "Кунжут", "Спайси", "Сыр Моцарелла", "Унаги Соус", "Масаго", "Крылышки", "Фри", "Тесто", "Сыр", "Пицца соус", "Томато", "Колбаса","Курица", "Грибы"])
+@bot.message_handler(func=lambda message: message.text in ["Рис", "Нори", "Ласось", "Твор Сыр", "Угорь", "Огурцы", "Листья Салат", "Майонез", "Курица", "Снеж Краб", "Плавленный Сыр", "Кунжут", "Спайси", "Сыр Моцарелла", "Унаги Соус", "Масаго", "Крылышки", "Фри", "Тесто", "Сыр", "Пицца соус", "Томато", "Колбаса","Курица", "Грибы","Краб"])
 def handle_selected_product(message):
     user_id = message.chat.id
     product_name = message.text
