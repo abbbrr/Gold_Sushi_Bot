@@ -176,8 +176,19 @@ sets = [
     ]},
     {"name": "Сет Счастья", "price": 5290, "cost_price": 2717, "ingredients": [
         {"type": "drink", "name": "Cola", "quantity": 1},
-        {"type": "product", "name": "Мука", "quantity": 350},
-        {"type": "product", "name": "Картошка", "quantity": 200}
+        {"type": "product", "name": "Рис", "quantity": 330},
+        {"type": "product", "name": "Нори", "quantity": 3},
+        {"type": "product", "name": "Ласось", "quantity": 45},
+        {"type": "product", "name": "Листья Салат", "quantity": 23},
+        {"type": "product", "name": "Курица", "quantity": 23},
+        {"type": "product", "name": "Майонез", "quantity": 10},
+        {"type": "product", "name": "Твор Сыр", "quantity": 65},
+        {"type": "product", "name": "Огурцы", "quantity": 55},
+        {"type": "product", "name": "Крылышки", "quantity": 5},
+        {"type": "product", "name": "Тесто", "quantity": 250},
+        {"type": "product", "name": "Сыр", "quantity": 100},
+        {"type": "product", "name": "Пицца соус", "quantity": 50},
+        {"type": "product", "name": "Колбаса", "quantity": 100}
     ]},
 ]
 
