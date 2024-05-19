@@ -167,7 +167,7 @@ def handle_total_sales(message):
     total_price = 0
     total_cost = 0
     current_date = datetime.datetime.now().strftime("----------------------------%d.%m.%Y--------------------------")
-    sales_text = f"{current_date}\n-----------------------Общий чек за день---------------------\n\n"
+    sales_text = f"{current_date}\n------------------------Общий чек за день----------------------\n\n"
 
     # Подключение к базам данных SQLite
     sales_conn = sqlite3.connect('sales.db')
