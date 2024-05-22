@@ -1,9 +1,10 @@
+import logging
+
 import telebot, datetime
 from sets_data import sets, rest
 from PIL import Image, ImageDraw, ImageFont
 from telebot import types
 import sqlite3
-from requests.exceptions import ReadTimeout, ConnectionError
 import time
 
 TOKEN = '7058378528:AAFk9MP7hAclT34-JAz29ewI-icYntRzeqU'
@@ -802,19 +803,35 @@ def clear_all_drinks(message):
     bot.send_message(message.chat.id, "Все данные о напитках были успешно удалены из базы данных.")
 
 # Запуск бота
-def start_bot():
-    while True:
-        try:
-            bot.polling(timeout=60, long_polling_timeout=60)
-        except ReadTimeout:
-            print("Read timeout occurred, retrying...")
-            time.sleep(15)  # Wait before retrying
-        except ConnectionError:
-            print("Connection error occurred, retrying...")
-            time.sleep(15)  # Wait before retrying
-        except Exception as e:
-            print(f"An unexpected error occurred: {e}")
-            time.sleep(15)  # Wait before retrying
+while True:
+    try:
+        logging.info("Bot running..")
+        bot.polling(none_stop=True, interval=2)
 
-if __name__ == '__main__':
-    start_bot()
+        # Предполагаю, что бот может мирно завершить работу, поэтому
+        # даем выйти из цикла
+        break
+    except telebot.apihelper.ApiException as e:
+        logging.error(e)
+        bot.stop_polling()
+
+        time.sleep(15)
+
+        logging.info("Running again!")
+
+# def start_bot():
+#     while True:
+#         try:
+#             bot.polling(timeout=60, long_polling_timeout=60)
+#         except ReadTimeout:
+#             print("Read timeout occurred, retrying...")
+#             time.sleep(15)  # Wait before retrying
+#         except ConnectionError:
+#             print("Connection error occurred, retrying...")
+#             time.sleep(15)  # Wait before retrying
+#         except Exception as e:
+#             print(f"An unexpected error occurred: {e}")
+#             time.sleep(15)  # Wait before retrying
+#
+# if __name__ == '__main__':
+#     start_bot()
