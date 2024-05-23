@@ -28,7 +28,8 @@ def handle_start(message):
     item4 = types.KeyboardButton("Общий счет за день 📈")
     item5 = types.KeyboardButton("Общий счет за месяц 🗓")
     item6 = types.KeyboardButton("Закрыть день 🚫")
-    markup.add(item1, item2,item3,item4, item5,item6)
+    item7 = types.KeyboardButton("Отмена товара")
+    markup.add(item1, item2,item3,item4, item5,item6, item7)
 
     today = datetime.date.today().strftime("%d.%m.%Y")
     bot.send_message(message.chat.id, f"Служба обслуживание для Gold Sushi🍣\n -----Сегодняшняя дата: {today} ----- \n Выберите действие:", reply_markup=markup)
@@ -38,6 +39,35 @@ def handle_start(message):
 def handle_back(message):
     handle_start(message)
 
+
+# Обработчик нажатия на кнопку "Отмена товара"
+@bot.message_handler(func=lambda message: message.text == "Отмена товара")
+def handle_cancel_product(message):
+    # Отправляем сообщение с запросом на ввод названия товара для отмены
+    bot.send_message(message.chat.id, "Напишите название товара для отмены:")
+    bot.register_next_step_handler(message, cancel_product)
+
+# Функция для отмены товара
+def cancel_product(message):
+    user_id = message.chat.id
+    product_name = message.text
+
+    # Подключение к базе данных SQLite
+    sqlite_conn = sqlite3.connect('products.db')
+    sqlite_cursor = sqlite_conn.cursor()
+
+    # Удаление товара из базы данных
+    sqlite_cursor.execute("DELETE FROM products WHERE user_id = ? AND product = ?", (user_id, product_name))
+    sqlite_conn.commit()
+
+    # Проверяем, был ли удален товар
+    if sqlite_cursor.rowcount > 0:
+        bot.send_message(message.chat.id, f"Товар '{product_name}' успешно удален.")
+    else:
+        bot.send_message(message.chat.id, f"Товар '{product_name}' не найден в вашем заказе.")
+
+    # Закрытие соединения с базой данных SQLite
+    sqlite_conn.close()
 
 @bot.message_handler(func=lambda message: message.text == "Общий счет за месяц 🗓")
 def handle_total_month_sales(message):
