@@ -6,6 +6,7 @@ from PIL import Image, ImageDraw, ImageFont
 from telebot import types
 import sqlite3
 import time
+from requests.exceptions import ProxyError
 
 TOKEN = '7058378528:AAFk9MP7hAclT34-JAz29ewI-icYntRzeqU'
 
@@ -841,6 +842,13 @@ while True:
         # Предполагаю, что бот может мирно завершить работу, поэтому
         # даем выйти из цикла
         break
+    except ProxyError as e:
+        logging.error(f"Proxy error: {e}")
+        bot.stop_polling()
+
+        time.sleep(15)
+
+        logging.info("Running again!")
     except telebot.apihelper.ApiException as e:
         logging.error(e)
         bot.stop_polling()
